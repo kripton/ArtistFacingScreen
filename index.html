@@ -20,24 +20,33 @@
 <script>
   // For non-polled communication to the backend
   var socket = io();
-  // The actual message to be displayed
-  var messageText = '[Connecting]'
+  // State of what should be displayed how
+  var state = {
+    mode: 'clock',
+    text: '[Connecting to Socket.IO ...]'
+  }
 
   // Generate the clock/countdown string
   function timeString() {
-    var now = new Date();
-    var hours = now.getHours();
-    if (hours < 10) hours = "0" + hours;
-    var minutes = now.getMinutes();
-    if (minutes < 10) minutes = "0" + minutes;
-    var seconds = now.getSeconds();
-    if (seconds < 10) seconds = "0" + seconds;
-    return hours + ":" + minutes + ":" + seconds;
+    if (state.mode === 'clock') {
+      var now = new Date();
+      var hours = now.getHours();
+      if (hours < 10) hours = "0" + hours;
+      var minutes = now.getMinutes();
+      if (minutes < 10) minutes = "0" + minutes;
+      var seconds = now.getSeconds();
+      if (seconds < 10) seconds = "0" + seconds;
+      return '<b>' + hours + ":" + minutes + ":" + seconds + '</b><br />';
+    } else if (state.mode === 'countdown') {
+      return '<b>' + '01:00:00' + '</b><br />';
+    } else {
+      return '';
+    }
   }
 
   // Update the text to be displayed with the current clock/countdown + message
   function updateText() {
-    document.body.innerHTML = '<b>' + timeString() + '</b><br />' + messageText;
+    document.body.innerHTML = timeString() + state.text;
   }
 
   // Determine if the current text would fit on the screen with given fontSize
@@ -45,10 +54,10 @@
     document.body.style.fontSize = fontSize + 'px';
     if ((document.body.scrollWidth <= window.innerWidth) &&
       (document.body.scrollHeight <= window.innerHeight)) {
-      console.log('Tried ' + fontSize + ' fits: TRUE');
+      console.log('fitsTextIntoScreen: Tried ' + fontSize + ' fits: TRUE');
       return true;
     } else {
-      console.log('Tried ' + fontSize + ' fits: FALSE');
+      console.log('fitsTextIntoScreen: Tried ' + fontSize + ' fits: FALSE');
       return false;
     }
   }
@@ -83,8 +92,9 @@
   }
 
   // When a new command comes is, handle that
-  socket.on('text', function (msg) {
-    messageText = msg.text;
+  socket.on('update', (newState) => {
+    state = newState;
+    console.log(state);
     updateText();
     resizeFont();
   });
