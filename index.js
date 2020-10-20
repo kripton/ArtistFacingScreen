@@ -29,10 +29,29 @@ function updateTimeString() {
     if (state.countdownRunning) {
       // Update the remaining time
       state.countdownRemaining = state.countdownEnd - moment();
-      if (state.countdownRemaining < 0) {
-        state.countdownRemaining = 0;
-        textColor = 'red';
+
+      // Inform the operator about the time remaining
+      var remaining = moment.duration(state.countdownRemaining);
+      var reportDiff = moment() - state.countdownLastReport;
+      // Once every 30s for duration > 1min, every 10s for <=1min and every s for <=10s
+      if (
+        ((remaining > 60000) && (reportDiff >= 30000)) ||
+        ((remaining <= 60000) && (reportDiff >= 10000)) ||
+        ((remaining <= 10000) && (reportDiff >= 1000))
+      ) {
+        client.sendMessage('Countdown remaining: <b>' + moment.utc(state.countdownRemaining).format('HH:mm:ss') + '</b>');
+        state.countdownLastReport = moment();
       }
+
+      if (state.countdownRemaining <= 0) {
+        state.countdownRemaining = 0;
+        state.countdownRunning = false;
+        textColor = 'red';
+        client.sendMessage('Countdown remaining: <span style="font-weight: bold; color: red;">00:00:00</span>');
+      }
+    }
+    if (state.countdownRemaining <= 0) {
+      textColor = 'red';
     }
     state.countdownDisplay = moment.utc(state.countdownRemaining).format("HH:mm:ss")
     state.timestring = '<span style="font-weight: bold; color: ' + textColor + ';">' + state.countdownDisplay + '</span><br />';
@@ -96,9 +115,11 @@ client.on('message', message => {
       state.mode = 'clock';
     } else if (message.content.startsWith('!countdown')) {
       state.mode = 'countdown';
+      state.countdownLastReport = moment() - 900;
       if (message.content === '!countdown') {
         // If no further parameters are given, make it 60 minutes and PAUSE
         state.countdownRemaining = 60 * 60 * 1000;
+        state.countdownEnd = '';
         state.countdownRunning = false;
       } else if (message.content.includes(' ')) {
         if (message.content.split(' ')[1].includes(':')) {
@@ -133,7 +154,6 @@ client.on('message', message => {
           state.countdownRemaining = message.content.split(' ')[1] * 60 * 1000;
           state.countdownEnd = '';
           state.countdownRunning = false;
-          console.log('REMAINING:' + state.countdownRemaining);
           if (message.content.split(' ')[2] && (message.content.split(' ')[2].toLowerCase() === 'run')) {
             state.countdownEnd = moment.now() + state.countdownRemaining;
             state.countdownRunning = true;
