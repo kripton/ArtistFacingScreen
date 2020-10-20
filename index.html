@@ -21,7 +21,7 @@
   // For non-polled communication to the backend
   var socket = io();
   // The actual message to be displayed
-  var messageText = 'Connecting ...'
+  var messageText = '[Connecting]'
 
   // Generate the clock/countdown string
   function timeString() {
@@ -35,31 +35,66 @@
     return hours + ":" + minutes + ":" + seconds;
   }
 
-  // Update the clock/countdown part of the displayed message
+  // Update the text to be displayed with the current clock/countdown + message
   function updateText() {
-    console.log("TICK");
-    document.body.innerHTML = timeString() + "<br />" + messageText;
+    document.body.innerHTML = '<b>' + timeString() + '</b><br />' + messageText;
   }
 
-  // Automatically call the updateText-function every 200ms
-  const updateTimeout = window.setInterval(updateText, 200);
+  // Determine if the current text would fit on the screen with given fontSize
+  function fitsTextIntoScreen(fontSize) {
+    document.body.style.fontSize = fontSize + 'px';
+    if ((document.body.scrollWidth <= window.innerWidth) &&
+      (document.body.scrollHeight <= window.innerHeight)) {
+      console.log('Tried ' + fontSize + ' fits: TRUE');
+      return true;
+    } else {
+      console.log('Tried ' + fontSize + ' fits: FALSE');
+      return false;
+    }
+  }
 
   // Find the optimal font size that is as large as possible while still
   // fitting all text without scrolling
+  // Google Chrome is a bit slow when trying linearly, so we do the
+  // "Binary Search" approach here
   function resizeFont() {
-      var fontsize = 1000;
-      document.body.style.fontSize = fontsize + 'px';
-      while ((document.body.scrollWidth > window.innerWidth) || (document.body.scrollHeight > window.innerHeight)) {
-        fontsize--;
-        document.body.style.fontSize = fontsize + 'px';
+    var upperLimit = 10000;
+    var lowerLimit = 0;
+    var currentTry = Math.floor((upperLimit + lowerLimit) / 2);
+
+    while (true) {
+      // This is what we want: The text fits with that size
+      // but would not fit with size + 1
+      if (fitsTextIntoScreen(currentTry) && !fitsTextIntoScreen(currentTry+1)) {
+        break;
       }
+
+      if (fitsTextIntoScreen(currentTry)) {
+        // Text is too small: Set the lowerLimit to currentTry
+        lowerLimit = currentTry + 1;
+      } else {
+        // Text is too large: Set the upperLimit to currentTry
+        upperLimit = currentTry - 1;
+      }
+      currentTry = Math.floor((upperLimit + lowerLimit) / 2);
+    }
+
+    document.body.style.fontSize = currentTry + 'px';
   }
 
+  // When a new command comes is, handle that
   socket.on('text', function (msg) {
     messageText = msg.text;
     updateText();
     resizeFont();
   });
+
+  // Initial updates with a timeout so the DOM has loaded
+  window.setTimeout(updateText, 10);
+  window.setTimeout(resizeFont, 100);
+
+  // Automatically refresh the clock/countdown every 200ms
+  window.setInterval(updateText, 200);
 </script>
 
 <body>
