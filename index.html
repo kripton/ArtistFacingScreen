@@ -26,10 +26,20 @@
     timestring: '<b>??:??:??</b><br />',
     text: '[Connecting to WebSocket ...]'
   }
+  var warningSign = '';
+
+  function checkConnected() {
+    warningSign = '';
+    if (!socket.connected) {
+      warningSign = '⚠';
+      updateText();
+    }
+  }
+  window.setInterval(checkConnected, 3000);
 
   // Update the text to be displayed with the current clock/countdown + message
   function updateText() {
-    document.body.innerHTML = state.timestring + state.text;
+    document.body.innerHTML = warningSign + state.timestring + state.text;
 
     // Sanity check: Make sure that the new text fits the screen size
     // This can happen when changing modes with few text displayed
