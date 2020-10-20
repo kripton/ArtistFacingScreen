@@ -105,6 +105,9 @@
 
   // Automatically refresh the clock/countdown every 200ms
   window.setInterval(updateText, 200);
+
+  // Update the font size when the window size changes
+  window.onresize = resizeFont;
 </script>
 
 <body>
