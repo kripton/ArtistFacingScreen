@@ -30,6 +30,13 @@
   // Update the text to be displayed with the current clock/countdown + message
   function updateText() {
     document.body.innerHTML = state.timestring + state.text;
+
+    // Sanity check: Make sure that the new text fits the screen size
+    // This can happen when changing modes with few text displayed
+    if ((document.body.scrollHeight > window.innerHeight) ||
+      (document.body.scrollWidth > window.innerWidth)) {
+        resizeFont();
+      }
   }
 
   // Determine if the current text would fit on the screen with given fontSize
@@ -77,7 +84,7 @@
   // When a new command comes is, handle that
   socket.on('update', (newState) => {
     var textChanged = false;
-    if (newState.text != state.text) {
+    if ((newState.text != state.text) || (newState.mode != state.mode)) {
       textChanged = true;
     }
     state = newState;
