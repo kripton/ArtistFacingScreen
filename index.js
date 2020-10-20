@@ -1,3 +1,6 @@
+// Date and time tool
+const moment = require('moment');
+
 // Mumble client
 const NoodleJS = require('noodle.js');
 
@@ -10,11 +13,36 @@ const io = require('socket.io')(http);
 // the clients when they connect and don't have to wait
 // for a new message/command in Mumble
 var state = {
-  text: '[Connecting to Mumble ...]',
   mode: 'clock',
+  timestring: '<b>??:??:??</b><br />',
+  text: '[Connecting to Intercom ...]',
   countdownRunning: false,
+  countdownRemaining: 3600000,
   countdownEnd: ''
 }
+
+function updateTimeString() {
+  if (state.mode === 'clock') {
+    state.timestring = '<b>' + moment().format('HH:mm:ss') + '</b><br />';
+  } else if (state.mode === 'countdown') {
+    if (state.countdownRunning) {
+      // Update the remaining time
+      state.countdownRemaining = state.countdownEnd - moment();
+    }
+    state.countdownDisplay = moment.utc(state.countdownRemaining).format("HH:mm:ss")
+    state.timestring = '<b>' + state.countdownDisplay + '</b><br />';
+  } else {
+    state.timestring = '';
+  }
+}
+
+function updateClients() {
+  updateTimeString();
+  io.emit('update', state);
+}
+
+// Update all clients periodically
+setInterval(updateClients, 200);
 
 // Simply serve index.html when asked for /
 app.get('/', (req, res) => {
@@ -26,7 +54,7 @@ io.on('connection', (socket) => {
     socket.conn.request.headers['user-agent'] + ')');
 
   // Send the current state to all connected clients
-  io.emit('update', state);
+  updateClients();
 
   // Simply inform when a user disconnects
   socket.on('disconnect', (reason) => {
@@ -35,17 +63,23 @@ io.on('connection', (socket) => {
   });
 });
 
+
+
 http.listen(8123, () => {
   console.log('HTTP listening on *:8123');
 });
 
+// Connect to Mumble server
 const client = new NoodleJS({
-  url: '127.0.0.1'
+  url: '127.0.0.1',
+  name: 'ArtistFacingScreen'
 });
 
 client.on('ready', info => {
   console.log('Connected to Mumble server:', info);
   state.text = '[Connected to Mumble]';
+
+  console.log('Channels:', client.channels);
 });
 
 client.on('message', message => {
@@ -57,13 +91,51 @@ client.on('message', message => {
       state.mode = 'clock';
     } else if (message.content.startsWith('!countdown')) {
       state.mode = 'countdown';
-      // If no further parameters are given, make it 60 minutes and PAUSE
       if (message.content === '!countdown') {
-        var now = new Date();
-        var end =  new Date(now.getTime() + 60000);
-        state.countdownEnd = end.toISOString();
-        state.countdownRunning = true;
+        // If no further parameters are given, make it 60 minutes and PAUSE
+        state.countdownRemaining = 60 * 60 * 1000;
+        state.countdownRunning = false;
+      } else if (message.content.includes(' ')) {
+        if (message.content.split(' ')[1].includes(':')) {
+          // An end time has been given
+          var timeParts = message.content.split(' ')[1].split(':');
+          var end = moment();
+          end.set('hour', timeParts[0]);
+          end.set('minute', timeParts[1]);
+          if (timeParts[2]) {
+            end.set('second', timeParts[2]);
+          } else {
+            end.set('second', 0);
+          }
+          state.countdownEnd = end;
+          state.countdownRunning = true;
+          if (message.content.split(' ')[2] && (message.content.split(' ')[2].toLowerCase() === 'pause')) {
+            state.countdownRunning = false;
+          }
+        } else if (message.content.split(' ')[1].toLowerCase() === 'run') {
+          // Run a paused countdown
+          if (state.countdownEnd == '') {
+            state.countdownEnd = moment() + state.countdownRemaining;
+          }
+          state.countdownRunning = true;
+        } else if (message.content.split(' ')[1].toLowerCase() === 'pause') {
+          // Pause a running countdown
+          state.countdownRemaining = state.countdownEnd - moment();
+          state.countdownEnd = '';
+          state.countdownRunning = false;
+        } else {
+          // A time in minutes has been given. Default: PAUSE
+          state.countdownRemaining = message.content.split(' ')[1] * 60 * 1000;
+          state.countdownEnd = '';
+          state.countdownRunning = false;
+          console.log('REMAINING:' + state.countdownRemaining);
+          if (message.content.split(' ')[2] && (message.content.split(' ')[2].toLowerCase() === 'run')) {
+            state.countdownEnd = moment.now() + state.countdownRemaining;
+            state.countdownRunning = true;
+          }
+        }
       }
+      updateTimeString();
     } else {
       // Invalid mode
       client.sendMessage('<span style="color: red;">Invalid command. Valid: <b>!text</b>, <b>!clock<b/>, <b>!countdown</b></span>');
