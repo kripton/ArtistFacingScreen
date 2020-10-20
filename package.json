@@ -1,0 +1,10 @@
+{
+  "name": "ArtistFacingScreen",
+  "version": "0.0.1",
+  "description": "A mumble bot with HTTP server to display artist-facing text messages fullscreen",
+  "dependencies": {
+    "express": "^4.17.1",
+    "noodle.js": "^1.3.0",
+    "socket.io": "^2.3.0"
+  }
+}

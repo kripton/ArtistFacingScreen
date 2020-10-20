@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+
+<head>
+  <title>Artist Facing Screen</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font: 200px Helvetica, Arial;
+      overflow: hidden;
+      text-align: center;
+    }
+  </style>
+</head>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  // For non-polled communication to the backend
+  var socket = io();
+  // The actual message to be displayed
+  var messageText = 'Connecting ...'
+
+  // Generate the clock/countdown string
+  function timeString() {
+    var now = new Date();
+    var hours = now.getHours();
+    if (hours < 10) hours = "0" + hours;
+    var minutes = now.getMinutes();
+    if (minutes < 10) minutes = "0" + minutes;
+    var seconds = now.getSeconds();
+    if (seconds < 10) seconds = "0" + seconds;
+    return hours + ":" + minutes + ":" + seconds;
+  }
+
+  // Update the clock/countdown part of the displayed message
+  function updateText() {
+    console.log("TICK");
+    document.body.innerHTML = timeString() + "<br />" + messageText;
+  }
+
+  // Automatically call the updateText-function every 200ms
+  const updateTimeout = window.setInterval(updateText, 200);
+
+  // Find the optimal font size that is as large as possible while still
+  // fitting all text without scrolling
+  function resizeFont() {
+      var fontsize = 1000;
+      document.body.style.fontSize = fontsize + 'px';
+      while ((document.body.scrollWidth > window.innerWidth) || (document.body.scrollHeight > window.innerHeight)) {
+        fontsize--;
+        document.body.style.fontSize = fontsize + 'px';
+      }
+  }
+
+  socket.on('text', function (msg) {
+    messageText = msg.text;
+    updateText();
+    resizeFont();
+  });
+</script>
+
+<body>
+</body>
+
+</html>
