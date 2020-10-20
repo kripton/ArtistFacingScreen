@@ -25,12 +25,17 @@ function updateTimeString() {
   if (state.mode === 'clock') {
     state.timestring = '<b>' + moment().format('HH:mm:ss') + '</b><br />';
   } else if (state.mode === 'countdown') {
+    var textColor = "black"
     if (state.countdownRunning) {
       // Update the remaining time
       state.countdownRemaining = state.countdownEnd - moment();
+      if (state.countdownRemaining < 0) {
+        state.countdownRemaining = 0;
+        textColor = 'red';
+      }
     }
     state.countdownDisplay = moment.utc(state.countdownRemaining).format("HH:mm:ss")
-    state.timestring = '<b>' + state.countdownDisplay + '</b><br />';
+    state.timestring = '<span style="font-weight: bold; color: ' + textColor + ';">' + state.countdownDisplay + '</span><br />';
   } else {
     state.timestring = '';
   }
