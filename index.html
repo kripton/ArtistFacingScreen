@@ -71,6 +71,12 @@
     var lowerLimit = 0;
     var currentTry = Math.floor((upperLimit + lowerLimit) / 2);
 
+    // This function would loop endlessly on empty strings
+    if (document.body.innerText === '') {
+      document.body.style.fontSize = currentTry + 'px';
+      return;
+    }
+
     while (true) {
       // This is what we want: The text fits with that size
       // but would not fit with size + 1
