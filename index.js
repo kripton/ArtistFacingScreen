@@ -106,9 +106,10 @@ client.on('ready', info => {
   console.log('=====');
 });
 
-client.on('error', error => {
-  console.warn('Mumble error :( :', error);
-});
+//client.on('error', error => {
+//  console.warn('Mumble error :( :', error);
+//  console.warn('Since reconnecting does not work with Noodle.JS, we quit :)');
+//});
 
 client.on('message', message => {
   console.log('===== Message: =====\n', message);
