@@ -87,8 +87,6 @@ io.on('connection', (socket) => {
   });
 });
 
-
-
 http.listen(8123, () => {
   console.log('HTTP listening on *:8123');
 });
@@ -103,11 +101,18 @@ client.on('ready', info => {
   console.log('Connected to Mumble server:', info);
   state.text = '[Connected to Mumble]';
 
-  console.log('Channels:', client.channels);
+  console.log('===== Channels: =====\n', client.channels);
+  console.log('===== Users: =====\n', client.users);
+  console.log('=====');
+});
+
+client.on('error', error => {
+  console.warn('Mumble error :( :', error);
 });
 
 client.on('message', message => {
-  console.log(message);
+  console.log('===== Message: =====\n', message);
+  console.log('=====');
   if (message.content.startsWith('!')) {
     if (message.content.startsWith('!text')) {
       state.mode = 'text';
