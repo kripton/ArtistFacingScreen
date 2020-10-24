@@ -104,6 +104,24 @@ client.on('ready', info => {
   console.log('===== Channels: =====\n', client.channels);
   console.log('===== Users: =====\n', client.users);
   console.log('=====');
+
+  // Find the correct channel and switch if found
+  for (var [key, value] of client.channels) {
+    console.log(key + " = ", value.name);
+    if (value.name === 'Artist Facing Screens') {
+      console.log('Switching :)');
+      client.switchChannel(key).then(() => {
+        //client.startListeningToChannel(1).then(() => {
+        //  console.log('Success');
+        //});
+      });
+    }
+  }
+});
+
+client.on('voiceData', (voiceData) => {
+  //console.debug('voiceData FROM:' + voiceData.sender + ' Sequence:' + voiceData.sequence + ' decodedData.length:' + voiceData.decodedData.length);
+  console.debug('voiceData:', voiceData);
 });
 
 //client.on('error', error => {
@@ -157,7 +175,11 @@ client.on('message', message => {
           state.countdownRunning = false;
         } else {
           // A time in minutes has been given. Default: PAUSE
-          state.countdownRemaining = message.content.split(' ')[1] * 60 * 1000;
+          var parts = message.content.split(' ')[1].split('+');
+          state.countdownRemaining = parts[0] * 60 * 1000;
+          if (parts[1]) {
+            state.countdownRemaining += parts[1] * 1000;
+          }
           state.countdownEnd = '';
           state.countdownRunning = false;
           if (message.content.split(' ')[2] && (message.content.split(' ')[2].toLowerCase() === 'run')) {
