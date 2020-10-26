@@ -3,6 +3,7 @@ const moment = require('moment');
 
 // Mumble client
 const NoodleJS = require('noodle.js');
+const { send } = require('process');
 
 // HTTP server with WebSocket support
 const app = require('express')();
@@ -17,7 +18,7 @@ var state = {
   timestring: '<b>??:??:??</b><br />',
   text: '[Connecting to Intercom ...]',
   countdownRunning: false,
-  countdownRemaining: 3600000,
+  countdownRemaining: 0,
   countdownEnd: ''
 }
 
@@ -119,32 +120,72 @@ client.on('ready', info => {
   }
 });
 
-client.on('voiceData', (voiceData) => {
-  //console.debug('voiceData FROM:' + voiceData.sender + ' Sequence:' + voiceData.sequence + ' decodedData.length:' + voiceData.decodedData.length);
-  console.debug('voiceData:', voiceData);
-});
-
 //client.on('error', error => {
 //  console.warn('Mumble error :( :', error);
 //  console.warn('Since reconnecting does not work with Noodle.JS, we quit :)');
 //});
 
+function sendStatusText() {
+  var feedback = '';
+  if (state.mode === 'text') {
+    feedback = 'Mode: <b>text only</b>';
+  } else if (state.mode === 'clock') {
+    feedback = 'Mode: <b>clock</b>';
+  } else if (state.mode === 'countdown') {
+    feedback = 'Mode: <b>countdown</b>: ';
+    feedback += ' <b>' + moment.utc(state.countdownRemaining).format("HH:mm:ss") +
+    '</b> remaining (until ~<b>' + moment().add(state.countdownRemaining, 'ms').format('HH:mm:ss') +
+    '</b>) and ';
+    if (state.countdownRunning) {
+      feedback += '<b>RUNNING</b>';
+    } else {
+      feedback += '<b>PAUSED</b>';
+    }
+  }
+  feedback += '.<br /><b>TEXT:</b>' + state.text;
+  client.sendMessage(feedback);
+}
+
 client.on('message', message => {
   console.log('===== Message: =====\n', message);
   console.log('=====');
   if (message.content.startsWith('!')) {
-    if (message.content.startsWith('!text')) {
+    if (message.content === '!help') {
+      var helpText = '<pre>';
+      helpText += 'Commands:<br/>';
+      helpText += '  !?                           Displays the current status<br/>';
+      helpText += '  !text                        Switch to text-only mode (no clock or countdown)<br/>';
+      helpText += '  !clock                       Switch to clock mode<br/>';
+      helpText += '  !countdown                   Switch to countdown mode<br/>';
+      helpText += '  !countdown HH:mm(:ss)        Set countdown until end time and RUN it<br/>';
+      helpText += '  !countdown HH:mm(:ss) pause  Set countdown until end time and PAUSE it<br/>';
+      helpText += '  !countdown mm+ss             Set countdown for time and PAUSE it<br/>';
+      helpText += '  !countdown mm+ss run         Set countdown for time and RUN it<br/>';
+      helpText += '  !countdown run               Start a paused countdown<br/>';
+      helpText += '  !countdown pause             Pause a running countdown<br/>';
+      helpText += '</pre>';
+      client.sendMessage(helpText);
+    } else if (message.content === '!?') {
+      sendStatusText();
+    } else if (message.content === '!text') {
       state.mode = 'text';
-    } else if (message.content.startsWith('!clock')) {
+      sendStatusText();
+    } else if (message.content === '!clock') {
       state.mode = 'clock';
+      sendStatusText();
     } else if (message.content.startsWith('!countdown')) {
       state.mode = 'countdown';
       state.countdownLastReport = moment() - 900;
       if (message.content === '!countdown') {
-        // If no further parameters are given, make it 60 minutes and PAUSE
-        state.countdownRemaining = 60 * 60 * 1000;
-        state.countdownEnd = '';
-        state.countdownRunning = false;
+        // With no further parameters are given, check if there was an "old" countdown
+        if ((state.countdownEnd != '') || (state.countdownRemaining != 0)) {
+          // if so, do "nothing" (= just switch mode)
+        } else {
+          // make it 60 minutes and PAUSE
+          state.countdownRemaining = 60 * 60 * 1000;
+          state.countdownEnd = '';
+          state.countdownRunning = false;
+        }
       } else if (message.content.includes(' ')) {
         if (message.content.split(' ')[1].includes(':')) {
           // An end time has been given
@@ -189,6 +230,7 @@ client.on('message', message => {
         }
       }
       updateTimeString();
+      sendStatusText();
     } else {
       // Invalid mode
       client.sendMessage('<span style="color: red;">Invalid command. Valid: <b>!text</b>, <b>!clock<b/>, <b>!countdown</b></span>');
